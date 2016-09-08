@@ -33,7 +33,7 @@ var winWidth, winHeight int = 1280, 720
 var lastFrameTick uint32 = 0
 
 func draw(window *sdl.Window, renderer *sdl.Renderer) {
-	const fps int = 60
+	const fps int = 90
 	const ticksPerFrame uint32 = uint32(1000 / fps)
 	bgColor := Color{r: 0, b: 0, g: 0, a: 255}
 	var currentFrameTick uint32 = sdl.GetTicks()
@@ -73,17 +73,17 @@ var xFreq float32 = 1
 var yFreq float32 = 1
 var xFreqDir float32 = 1
 var yFreqDir float32 = 1
-var lastUpdateTicks uint32
+var lastUpdateTicks uint32 = 0
 
-func (p Point) sineWaveDistortPoint(w int, h int) {
+func (p *Point) sineWaveDistortPoint(w int, h int) {
 	var updateTime uint32 = 10
 	var currentTicks uint32 = sdl.GetTicks()
 	if lastUpdateTicks == 0 {
 		lastUpdateTicks = sdl.GetTicks()
 	}
 
-	var normalizedX float32 = float32(p.x / w)
-	var normalizedY float32 = float32(p.y / h)
+	var normalizedX float32 = float32(p.x) / float32(w)
+	var normalizedY float32 = float32(p.y) / float32(h)
 
 	var xOffset = int(amp * (math.Sin(float64(xFreq*normalizedY+yFreq*normalizedX+2*math.Pi*tx)) * 0.5))
 	var yOffset = int(amp * (math.Sin(float64(xFreq*normalizedY+yFreq*normalizedX+2*math.Pi*ty)) * 0.5))
