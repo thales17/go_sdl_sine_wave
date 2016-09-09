@@ -1,5 +1,3 @@
-// author: Jacky Boen
-
 package main
 
 import (
@@ -31,6 +29,14 @@ var winTitle string = "Go SDL2 Sine Wave"
 var winWidth, winHeight int = 1280, 720
 
 var lastFrameTick uint32 = 0
+
+func RoundToInt32(a float64) int32 {
+	if a < 0 {
+		return int32(a - 0.5)
+	}
+
+	return int32(a + 0.5)
+}
 
 func draw(window *sdl.Window, renderer *sdl.Renderer) {
 	const fps int = 90
@@ -107,15 +113,15 @@ func (p *Point) sineWaveDistortPoint(w int, h int) {
 }
 
 func drawGrid(w int, h int, renderer *sdl.Renderer) {
-	var cols int = 50
-	var rows int = 50
-	var cellWidth int = w / cols
-	var cellHeight int = h / rows
+	var cols int = 30
+	var rows int = 30
+	var cellWidth int32 = RoundToInt32(float64(w) / float64(cols))
+	var cellHeight int32 = RoundToInt32(float64(h) / float64(rows))
 	var gridColor Color = Color{r: 0, g: 255, b: 0, a: 255}
 
 	// Draw Columns
-	for i := 0; i < cols; i++ {
-		x := i * cellWidth
+	for i := 1; i < cols; i++ {
+		x := i * int(cellWidth)
 		for j := 0; j < h; j++ {
 			p := Point{x: x, y: j}
 			p.sineWaveDistortPoint(w, h)
@@ -123,8 +129,8 @@ func drawGrid(w int, h int, renderer *sdl.Renderer) {
 		}
 	}
 
-	for i := 0; i < cols; i++ {
-		y := i * cellHeight
+	for i := 1; i < cols; i++ {
+		y := i * int(cellHeight)
 		for j := 0; j < w; j++ {
 			p := Point{x: j, y: y}
 			p.sineWaveDistortPoint(w, h)
@@ -161,7 +167,7 @@ func run() int {
 	var renderer *sdl.Renderer
 
 	var event sdl.Event
-	//var fullscreen bool
+	var fullscreen bool
 	var running bool
 
 	window, err := sdl.CreateWindow(winTitle, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
@@ -189,17 +195,16 @@ func run() int {
 				if t.Keysym.Sym == sdl.K_q {
 					running = false
 				} else if t.Keysym.Sym == sdl.K_f {
-					fmt.Println("Fullscreen not working")
-					/*
-						if !fullscreen {
-							// Go fullscreen
-							fullscreen = true
-							window.SetFullscreen(sdl.WINDOW_FULLSCREEN)
-						} else {
-							// Leave fullscreen
-							fullscreen = false
-							window.SetFullscreen(0)
-						} */
+					//fmt.Println("Fullscreen not working")
+					if !fullscreen {
+						// Go fullscreen
+						fullscreen = true
+						window.SetFullscreen(sdl.WINDOW_FULLSCREEN)
+					} else {
+						// Leave fullscreen
+						fullscreen = false
+						window.SetFullscreen(0)
+					}
 				}
 			}
 		}
