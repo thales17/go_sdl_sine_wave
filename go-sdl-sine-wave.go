@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 	"math"
-	"math/rand"
 	"os"
 )
 
@@ -32,6 +31,7 @@ var lastFrameTick uint32 = 0
 
 var origGridPoints []sdl.Point = createGrid(winWidth, winHeight)
 var gridPoints []sdl.Point = createGrid(winWidth, winHeight)
+var drawMode = 0
 
 func RoundToInt32(a float64) int32 {
 	if a < 0 {
@@ -59,14 +59,12 @@ func draw(window *sdl.Window, renderer *sdl.Renderer) {
 
 	renderer.Clear()
 
-	/*for i := 0; i < 50000; i++ {
-		drawPixel(randomPixel(winWidth, winHeight), renderer)
-	}*/
-
-	//oldDrawGrid(winWidth, winHeight, renderer)
-
 	updateGrid()
-	drawGrid(gridPoints, renderer)
+	if drawMode == 0 {
+		drawGrid(gridPoints, renderer)
+	} else {
+		drawGrid_1(gridPoints, renderer)
+	}
 
 	renderer.Present()
 
@@ -86,37 +84,6 @@ var yFreq float32 = 1
 var xFreqDir float32 = 1
 var yFreqDir float32 = 1
 var lastUpdateTicks uint32 = 0
-
-func (p *Point) sineWaveDistortPoint(w int, h int) {
-	var updateTime uint32 = 10
-	var currentTicks uint32 = sdl.GetTicks()
-	if lastUpdateTicks == 0 {
-		lastUpdateTicks = sdl.GetTicks()
-	}
-
-	var normalizedX float32 = float32(p.x) / float32(w)
-	var normalizedY float32 = float32(p.y) / float32(h)
-
-	var xOffset = int(amp * (math.Sin(float64(xFreq*normalizedY+yFreq*normalizedX+2*math.Pi*tx)) * 0.5))
-	var yOffset = int(amp * (math.Sin(float64(xFreq*normalizedY+yFreq*normalizedX+2*math.Pi*ty)) * 0.5))
-
-	//fmt.Println(xOffset, yOffset)
-	p.x += xOffset
-	p.y += yOffset
-
-	if (currentTicks - lastUpdateTicks) >= updateTime {
-		xFreq += (0.1) * xFreqDir
-		if xFreq > 25 || xFreq < 1 {
-			xFreqDir *= -1
-		}
-		yFreq += (0.1) * yFreqDir
-		if yFreq > 30 || yFreq < 1 {
-			yFreqDir *= -1
-		}
-
-		lastUpdateTicks = sdl.GetTicks()
-	}
-}
 
 func sineWaveDistortXY(x int32, y int32, w int, h int) (int32, int32) {
 	var distortedX int32 = x
@@ -154,8 +121,8 @@ func sineWaveDistortXY(x int32, y int32, w int, h int) (int32, int32) {
 }
 
 func createGrid(w int, h int) []sdl.Point {
-	var cols int = 90
-	var rows int = 90
+	var cols int = 50
+	var rows int = 50
 	var pixelCount = (cols-1)*h + (rows-1)*w
 	var points = make([]sdl.Point, pixelCount)
 	var cellWidth int32 = RoundToInt32(float64(w) / float64(cols))
@@ -202,54 +169,18 @@ func drawGrid(gridPoints []sdl.Point, renderer *sdl.Renderer) {
 	renderer.DrawPoints(gridPoints)
 }
 
-func oldDrawGrid(w int, h int, renderer *sdl.Renderer) {
-	var cols int = 30
-	var rows int = 30
-	var cellWidth int32 = RoundToInt32(float64(w) / float64(cols))
-	var cellHeight int32 = RoundToInt32(float64(h) / float64(rows))
+func drawGrid_1(gridPoints []sdl.Point, renderer *sdl.Renderer) {
 	var gridColor Color = Color{r: 0, g: 255, b: 0, a: 255}
+	for _, point := range gridPoints {
+		renderer.SetDrawColor(
+			gridColor.r,
+			gridColor.g,
+			gridColor.b,
+			gridColor.a,
+		)
 
-	// Draw Columns
-	for i := 1; i < cols; i++ {
-		x := i * int(cellWidth)
-		for j := 0; j < h; j++ {
-			p := Point{x: x, y: j}
-			p.sineWaveDistortPoint(w, h)
-			drawPixel(Pixel{point: p, color: gridColor}, renderer)
-		}
+		renderer.DrawPoint(int(point.X), int(point.Y))
 	}
-
-	for i := 1; i < cols; i++ {
-		y := i * int(cellHeight)
-		for j := 0; j < w; j++ {
-			p := Point{x: j, y: y}
-			p.sineWaveDistortPoint(w, h)
-			drawPixel(Pixel{point: p, color: gridColor}, renderer)
-		}
-	}
-}
-
-func drawPixel(pixel Pixel, renderer *sdl.Renderer) {
-	renderer.SetDrawColor(
-		pixel.color.r,
-		pixel.color.g,
-		pixel.color.b,
-		pixel.color.a,
-	)
-
-	renderer.DrawPoint(pixel.point.x, pixel.point.y)
-}
-
-func randomPixel(w int, h int) Pixel {
-	var pixel Pixel
-	pixel.point.x = rand.Intn(w)
-	pixel.point.y = rand.Intn(h)
-	pixel.color.r = uint8(rand.Intn(255))
-	pixel.color.g = uint8(rand.Intn(255))
-	pixel.color.b = uint8(rand.Intn(255))
-	pixel.color.a = uint8(rand.Intn(255))
-
-	return pixel
 }
 
 func run() int {
@@ -294,6 +225,12 @@ func run() int {
 						// Leave fullscreen
 						fullscreen = false
 						window.SetFullscreen(0)
+					}
+				} else if t.Keysym.Sym == sdl.K_m {
+					if drawMode == 0 {
+						drawMode = 1
+					} else {
+						drawMode = 0
 					}
 				}
 			}
