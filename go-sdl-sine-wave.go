@@ -30,6 +30,9 @@ var winWidth, winHeight int = 1280, 720
 
 var lastFrameTick uint32 = 0
 
+var origGridPoints []sdl.Point = createGrid(winWidth, winHeight)
+var gridPoints []sdl.Point = createGrid(winWidth, winHeight)
+
 func RoundToInt32(a float64) int32 {
 	if a < 0 {
 		return int32(a - 0.5)
@@ -60,7 +63,10 @@ func draw(window *sdl.Window, renderer *sdl.Renderer) {
 		drawPixel(randomPixel(winWidth, winHeight), renderer)
 	}*/
 
-	drawGrid(winWidth, winHeight, renderer)
+	//oldDrawGrid(winWidth, winHeight, renderer)
+
+	updateGrid()
+	drawGrid(gridPoints, renderer)
 
 	renderer.Present()
 
@@ -112,7 +118,91 @@ func (p *Point) sineWaveDistortPoint(w int, h int) {
 	}
 }
 
-func drawGrid(w int, h int, renderer *sdl.Renderer) {
+func sineWaveDistortXY(x int32, y int32, w int, h int) (int32, int32) {
+	var distortedX int32 = x
+	var distortedY int32 = y
+	var updateTime uint32 = 10
+	var currentTicks uint32 = sdl.GetTicks()
+	if lastUpdateTicks == 0 {
+		lastUpdateTicks = sdl.GetTicks()
+	}
+
+	var normalizedX float32 = float32(x) / float32(w)
+	var normalizedY float32 = float32(y) / float32(h)
+
+	var xOffset = int32(amp * (math.Sin(float64(xFreq*normalizedY+yFreq*normalizedX+2*math.Pi*tx)) * 0.5))
+	var yOffset = int32(amp * (math.Sin(float64(xFreq*normalizedY+yFreq*normalizedX+2*math.Pi*ty)) * 0.5))
+
+	//fmt.Println(xOffset, yOffset)
+	distortedX += xOffset
+	distortedY += yOffset
+
+	if (currentTicks - lastUpdateTicks) >= updateTime {
+		xFreq += (0.1) * xFreqDir
+		if xFreq > 25 || xFreq < 1 {
+			xFreqDir *= -1
+		}
+		yFreq += (0.1) * yFreqDir
+		if yFreq > 30 || yFreq < 1 {
+			yFreqDir *= -1
+		}
+
+		lastUpdateTicks = sdl.GetTicks()
+	}
+
+	return distortedX, distortedY
+}
+
+func createGrid(w int, h int) []sdl.Point {
+	var cols int = 90
+	var rows int = 90
+	var pixelCount = (cols-1)*h + (rows-1)*w
+	var points = make([]sdl.Point, pixelCount)
+	var cellWidth int32 = RoundToInt32(float64(w) / float64(cols))
+	var cellHeight int32 = RoundToInt32(float64(h) / float64(rows))
+	var index = 0
+
+	// Create Columns
+	for i := 1; i < cols; i++ {
+		x := i * int(cellWidth)
+		for j := 0; j < h; j++ {
+			points[index] = sdl.Point{X: int32(x), Y: int32(j)}
+			index++
+		}
+	}
+
+	// Create Rows
+	for i := 1; i < cols; i++ {
+		y := i * int(cellHeight)
+		for j := 0; j < w; j++ {
+			points[index] = sdl.Point{X: int32(j), Y: int32(y)}
+			index++
+		}
+	}
+
+	return points
+}
+
+func updateGrid() {
+	for i, point := range origGridPoints {
+		newX, newY := sineWaveDistortXY(point.X, point.Y, winWidth, winHeight)
+		gridPoints[i] = sdl.Point{X: newX, Y: newY}
+	}
+}
+
+func drawGrid(gridPoints []sdl.Point, renderer *sdl.Renderer) {
+	var gridColor Color = Color{r: 0, g: 255, b: 0, a: 255}
+	renderer.SetDrawColor(
+		gridColor.r,
+		gridColor.g,
+		gridColor.b,
+		gridColor.a,
+	)
+
+	renderer.DrawPoints(gridPoints)
+}
+
+func oldDrawGrid(w int, h int, renderer *sdl.Renderer) {
 	var cols int = 30
 	var rows int = 30
 	var cellWidth int32 = RoundToInt32(float64(w) / float64(cols))
