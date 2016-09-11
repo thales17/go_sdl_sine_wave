@@ -26,7 +26,7 @@ type Pixel struct {
 }
 
 var winTitle string = "Go SDL2 Sine Wave"
-var winWidth, winHeight int = 1280, 720
+var winWidth, winHeight int = 480, 320
 
 var lastFrameTick uint32 = 0
 
@@ -72,7 +72,7 @@ func draw(window *sdl.Window, renderer *sdl.Renderer) {
 	}
 }
 
-var amp float64 = 50
+var amp float64 = 20
 var tx float32 = math.Pi / 9
 var ty float32 = math.Pi / 4
 var xFreq float32 = 1
@@ -113,8 +113,8 @@ func (p *Point) sineWaveDistortPoint(w int, h int) {
 }
 
 func drawGrid(w int, h int, renderer *sdl.Renderer) {
-	var cols int = 30
-	var rows int = 30
+	var cols int = 10
+	var rows int = 10
 	var cellWidth int32 = RoundToInt32(float64(w) / float64(cols))
 	var cellHeight int32 = RoundToInt32(float64(h) / float64(rows))
 	var gridColor Color = Color{r: 0, g: 255, b: 0, a: 255}
