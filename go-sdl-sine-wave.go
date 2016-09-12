@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -13,19 +14,10 @@ const (
 	windowWidth  = 1280
 	windowHeight = 720
 	frameRate    = 60
-
-	cols      = 50
-	rows      = 50
-	numPoints = (cols-1)*windowHeight + (rows-1)*windowWidth
+	cols         = 50
+	rows         = 50
+	numPoints    = (cols-1)*windowHeight + (rows-1)*windowWidth
 )
-
-func roundToInt32(a float64) int32 {
-	if a < 0 {
-		return int32(a - 0.5)
-	}
-
-	return int32(a + 0.5)
-}
 
 var tx float32 = math.Pi / 9
 var ty float32 = math.Pi / 4
@@ -75,7 +67,7 @@ func run() int {
 	}()
 
 	sdl.CallQueue <- func() {
-		renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
+		renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
 	}
 	if err != nil {
 		fmt.Fprint(os.Stderr, "Failed to create renderer: %s\n", err)
@@ -93,22 +85,24 @@ func run() int {
 	var gridPoints = make([]sdl.Point, numPoints)
 	var origGridPoints = make([]sdl.Point, numPoints)
 	index := 0
-	cellWidth := roundToInt32(float64(windowWidth) / float64(cols))
-	cellHeight := roundToInt32(float64(windowHeight) / float64(rows))
+	cellWidth := math.Ceil(float64(windowWidth) / float64(cols))
+	cellHeight := math.Ceil(float64(windowHeight) / float64(rows))
 	// Create Columns
-	for i := 1; i < cols; i++ {
+	for i := 1; i < cols-1; i++ {
 		x := i * int(cellWidth)
 		for j := 0; j < windowHeight; j++ {
 			gridPoints[index] = sdl.Point{X: int32(x), Y: int32(j)}
+			origGridPoints[index] = sdl.Point{X: int32(x), Y: int32(j)}
 			index++
 		}
 	}
 
 	// Create Rows
-	for i := 1; i < cols; i++ {
+	for i := 1; i < rows-1; i++ {
 		y := i * int(cellHeight)
 		for j := 0; j < windowWidth; j++ {
 			gridPoints[index] = sdl.Point{X: int32(j), Y: int32(y)}
+			origGridPoints[index] = sdl.Point{X: int32(j), Y: int32(y)}
 			index++
 		}
 	}
@@ -131,20 +125,19 @@ func run() int {
 			renderer.DrawPoints(gridPoints)
 		}
 
-		// wg := sync.WaitGroup{}
-		// mutex := &sync.Mutex{}
-		// for i, point := range origGridPoints {
-		// 	wg.Add(1)
-		// 	go func(i int, point sdl.Point) {
-		// 		newX, newY := sineWaveDistortXY(point.X, point.Y, windowWidth, windowHeight)
-		// 		fmt.Println(newX, newY)
-		// 		mutex.Lock()
-		// 		gridPoints[i] = sdl.Point{X: newX, Y: newY}
-		// 		mutex.Unlock()
-		// 		wg.Done()
-		// 	}(i, point)
-		// }
-		// wg.Wait()
+		wg := sync.WaitGroup{}
+		mutex := &sync.Mutex{}
+		for i, point := range origGridPoints {
+			wg.Add(1)
+			go func(i int, point sdl.Point) {
+				newX, newY := sineWaveDistortXY(point.X, point.Y, windowWidth, windowHeight)
+				mutex.Lock()
+				gridPoints[i] = sdl.Point{X: newX, Y: newY}
+				mutex.Unlock()
+				wg.Done()
+			}(i, point)
+		}
+		wg.Wait()
 
 		updateDistortionState()
 
