@@ -108,12 +108,17 @@ func run() int {
 	}
 
 	running := true
+	useConcurrentDistort := false
 	for running {
 		sdl.CallQueue <- func() {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-				switch event.(type) {
+				switch t := event.(type) {
 				case *sdl.QuitEvent:
 					running = false
+				case *sdl.KeyUpEvent:
+					if t.Keysym.Sym == sdl.K_u {
+						useConcurrentDistort = !useConcurrentDistort
+					}
 				}
 			}
 
@@ -125,19 +130,36 @@ func run() int {
 			renderer.DrawPoints(gridPoints)
 		}
 
-		wg := sync.WaitGroup{}
-		mutex := &sync.Mutex{}
-		for i, point := range origGridPoints {
-			wg.Add(1)
-			go func(i int, point sdl.Point) {
-				newX, newY := sineWaveDistortXY(point.X, point.Y, windowWidth, windowHeight)
-				mutex.Lock()
-				gridPoints[i] = sdl.Point{X: newX, Y: newY}
-				mutex.Unlock()
-				wg.Done()
-			}(i, point)
+		concurrentDistort := func() {
+			wg := sync.WaitGroup{}
+			mutex := &sync.Mutex{}
+			for i, point := range origGridPoints {
+				wg.Add(1)
+				go func(i int, point sdl.Point) {
+					newX, newY := sineWaveDistortXY(point.X, point.Y, windowWidth, windowHeight)
+					mutex.Lock()
+					gridPoints[i] = sdl.Point{X: newX, Y: newY}
+					mutex.Unlock()
+					wg.Done()
+				}(i, point)
+			}
+			wg.Wait()
 		}
-		wg.Wait()
+
+		normalDistort := func() {
+			for i, point := range origGridPoints {
+				newX, newY := sineWaveDistortXY(point.X, point.Y, windowWidth, windowHeight)
+				gridPoints[i] = sdl.Point{X: newX, Y: newY}
+			}
+		}
+
+		if useConcurrentDistort {
+			// fmt.Println("Using concurrentDistort")
+			concurrentDistort()
+		} else {
+			// fmt.Println("Using normalDistort")
+			normalDistort()
+		}
 
 		updateDistortionState()
 
