@@ -5,6 +5,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 	"math"
 	"os"
+	"sync"
 )
 
 type Point struct {
@@ -32,6 +33,7 @@ var lastFrameTick uint32 = 0
 var origGridPoints []sdl.Point = createGrid(winWidth, winHeight)
 var gridPoints []sdl.Point = createGrid(winWidth, winHeight)
 var drawMode = 0
+var updateMode = 0
 
 func RoundToInt32(a float64) int32 {
 	if a < 0 {
@@ -59,7 +61,12 @@ func draw(window *sdl.Window, renderer *sdl.Renderer) {
 
 	renderer.Clear()
 
-	updateGrid()
+	if updateMode == 0 {
+		updateGrid_1()
+	} else {
+		updateGrid()
+	}
+
 	if drawMode == 0 {
 		drawGrid(gridPoints, renderer)
 	} else {
@@ -150,11 +157,30 @@ func createGrid(w int, h int) []sdl.Point {
 	return points
 }
 
-func updateGrid() {
+func updateGrid_1() {
 	for i, point := range origGridPoints {
 		newX, newY := sineWaveDistortXY(point.X, point.Y, winWidth, winHeight)
 		gridPoints[i] = sdl.Point{X: newX, Y: newY}
 	}
+}
+
+func updateGrid() {
+	var wg sync.WaitGroup
+	var mutex = &sync.Mutex{}
+	for i, point := range origGridPoints {
+		wg.Add(1)
+		go func(i int, point sdl.Point) {
+			newX, newY := sineWaveDistortXY(point.X, point.Y, winWidth, winHeight)
+			mutex.Lock()
+			gridPoints[i] = sdl.Point{X: newX, Y: newY}
+			mutex.Unlock()
+			wg.Done()
+			fmt.Println("done")
+		}(i, point)
+	}
+	fmt.Println("Waiting")
+	wg.Wait()
+	fmt.Println("All done")
 }
 
 func drawGrid(gridPoints []sdl.Point, renderer *sdl.Renderer) {
@@ -231,6 +257,12 @@ func run() int {
 						drawMode = 1
 					} else {
 						drawMode = 0
+					}
+				} else if t.Keysym.Sym == sdl.K_u {
+					if updateMode == 0 {
+						updateMode = 1
+					} else {
+						updateMode = 0
 					}
 				}
 			}
