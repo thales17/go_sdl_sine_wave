@@ -110,6 +110,7 @@ func run() int {
 
 	running := true
 	useConcurrentDistort := false
+	fullscreen := false
 	var lastFrameTime uint32 = sdl.GetTicks()
 	for running {
 
@@ -119,8 +120,18 @@ func run() int {
 				case *sdl.QuitEvent:
 					running = false
 				case *sdl.KeyUpEvent:
-					if t.Keysym.Sym == sdl.K_u {
+					switch t.Keysym.Sym {
+					case sdl.K_u:
 						useConcurrentDistort = !useConcurrentDistort
+					case sdl.K_q:
+						running = false
+					case sdl.K_f:
+						fullscreen = !fullscreen
+						if fullscreen {
+							window.SetFullscreen(sdl.WINDOW_FULLSCREEN)
+						} else {
+							window.SetFullscreen(0)
+						}
 					}
 				}
 			}
