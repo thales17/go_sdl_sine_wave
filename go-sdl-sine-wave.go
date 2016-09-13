@@ -13,10 +13,11 @@ const (
 	windowTitle  = "Go-SDL2 Render"
 	windowWidth  = 1280
 	windowHeight = 720
-	frameRate    = 60
+	frameRate    = 90
 	cols         = 50
 	rows         = 50
 	numPoints    = (cols-1)*windowHeight + (rows-1)*windowWidth
+	frameTime    = 1000 / frameRate
 )
 
 var tx float32 = math.Pi / 9
@@ -109,7 +110,9 @@ func run() int {
 
 	running := true
 	useConcurrentDistort := false
+	var lastFrameTime uint32 = sdl.GetTicks()
 	for running {
+
 		sdl.CallQueue <- func() {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 				switch t := event.(type) {
@@ -164,8 +167,12 @@ func run() int {
 		updateDistortionState()
 
 		sdl.CallQueue <- func() {
+			currentFrameTime := sdl.GetTicks()
 			renderer.Present()
-			sdl.Delay(1000 / frameRate)
+			if currentFrameTime-lastFrameTime < frameTime {
+				sdl.Delay(frameTime - (currentFrameTime - lastFrameTime))
+			}
+			lastFrameTime = currentFrameTime
 		}
 	}
 
